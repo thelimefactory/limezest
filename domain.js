@@ -22,25 +22,6 @@ eventstorage.createStorage(function (err, store) {
 	});
 });
 
-domain.getAggregate = function (aggregateType, id, callback) {
-	callback(null, {
-		id: id, 
-		create: function (cmd) {
-
-		},
-		startJob: function () {
-			console.log('starting')
-		}
-	});
-};
-
-domain.createAggregate = function (aggregateType, id) {
-	es.getEventStream(id, 0, function (err, stream) {
-		stream.addEvent({evt: "NewJobCreated", id: cmd.id, description: cmd.description});
-		stream.commit();
-	});
-};
-
 domain.execute = function (command) {
 	var urlParts = command.url.split('/');
 	var aggregateType = urlParts[1];

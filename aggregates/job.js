@@ -21,7 +21,11 @@ job.JobStarted = function (evt) {
 };
 
 job.create = function (cmd) {
-	eventStream.addEvent({evt: "NewJobCreated", description: cmd.description});
+	eventStream.addEvent({
+		evt: "NewJobCreated", 
+		aggregateId: cmd.aggregateId,
+		description: cmd.description
+	});
 	eventStream.commit();
 };
 

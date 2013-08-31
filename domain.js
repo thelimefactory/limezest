@@ -3,12 +3,25 @@ var domain = {};
 
 var eventstore = require('eventstore');
 var eventstorage = require('eventstore.redis');
+var redis = require('redis');
+var colors = require('./colors');
 
 var es = eventstore.createStore();
+// create a publisher which we use later to publish committed events back.  
+// just use another redis client and publish events to the _events channel_
 var publisher = {
-	publish: function (evt) {
-		console.log("Publishing event", evt);
-	}
+    
+    evt: redis.createClient(),
+
+    publish: function(evt) {
+        var msg = JSON.stringify(evt, null, 4);
+
+        console.log(colors.green('\npublishing event to redis:'));
+        console.log(msg);
+
+        publisher.evt.publish('events', msg);
+    }
+      
 };
 
 eventstorage.createStorage(function (err, store) {

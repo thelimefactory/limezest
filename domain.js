@@ -2,24 +2,28 @@
 var domain = {};
 
 var eventstore = require('eventstore');
-var eventstorage = require('eventstore.redis');
+var eventstorage = require('eventstore.mongoDb');
+// var eventstorage = require('eventstore.redis');
 var redis = require('redis');
 var colors = require('./colors');
+var publishSocket = require('zmq').socket('push');
+publishSocket.bindSync('tcp://127.0.0.1:3001');
 
 var es = eventstore.createStore();
 // create a publisher which we use later to publish committed events back.  
 // just use another redis client and publish events to the _events channel_
 var publisher = {
     
-    evt: redis.createClient(),
+    // evt: redis.createClient(),
 
     publish: function(evt) {
         var msg = JSON.stringify(evt, null, 4);
 
-        console.log(colors.green('\npublishing event to redis:'));
+        console.log(colors.green('\npublishing event on zero mq'));
         console.log(msg);
 
-        publisher.evt.publish('events', msg);
+        // publisher.evt.publish('events', msg);
+        publishSocket.send(msg);
     }
       
 };

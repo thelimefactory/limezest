@@ -20,6 +20,8 @@
     "eventstore.redis": "~0.6.0",
     "express": "~3.3.7",
     "node-uuid": "~1.4.1",
-    "redis": "~0.8.4"
+    "redis": "~0.8.4",
+    "zmq": "~2.5.1",
+    "eventstore.mongoDb": "~0.6.1"
   }
 }

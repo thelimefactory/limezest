@@ -1,13 +1,5 @@
-var redis = require("redis"),
-client = redis.createClient();
-
-var eventstore = require('eventstore');
-var eventstorage = require('eventstore.redis');
-
-var es = eventstore.createStore();
-es.getEventRange({}, 1000, function (err, events) {
-	console.log("Replaying Events", events);
-});
+var zmq = require('zmq')
+  , sock = zmq.socket('pull');
 
 var jobs = [];
 
@@ -18,16 +10,12 @@ var handlers = {
 	}
 }
 
-client.on('subscribe', function (channel, count) {
-	console.log('Subscribed', channel, count);
-});
+sock.connect('tcp://127.0.0.1:3001');
 
-client.on('message', function (channel, message) {
-	console.log('Recvd message', channel, message);
+sock.on('message', function(message){
+	console.log('Recvd message', message);
 	var evt = JSON.parse(message);
 	if (handlers[evt.evt]) {
 		handlers[evt.evt](evt);
 	}
 });
-
-client.subscribe('events');

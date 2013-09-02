@@ -23,5 +23,9 @@
     "redis": "~0.8.4",
     "zmq": "~2.5.1",
     "eventstore.mongoDb": "~0.6.1"
+  },
+  "devDependencies": {
+    "mocha": "~1.12.1",
+    "chai": "~1.7.2"
   }
 }

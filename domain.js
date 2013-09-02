@@ -3,29 +3,21 @@ var domain = {};
 
 var eventstore = require('eventstore');
 var eventstorage = require('eventstore.mongoDb');
-// var eventstorage = require('eventstore.redis');
-var redis = require('redis');
 var colors = require('./colors');
 var publishSocket = require('zmq').socket('push');
 publishSocket.bindSync('tcp://127.0.0.1:3001');
 
 var es = eventstore.createStore();
-// create a publisher which we use later to publish committed events back.  
-// just use another redis client and publish events to the _events channel_
 var publisher = {
     
-    // evt: redis.createClient(),
-
     publish: function(evt) {
         var msg = JSON.stringify(evt, null, 4);
 
         console.log(colors.green('\npublishing event on zero mq'));
         console.log(msg);
 
-        // publisher.evt.publish('events', msg);
         publishSocket.send(msg);
     }
-      
 };
 
 eventstorage.createStorage(function (err, store) {
@@ -35,27 +27,38 @@ eventstorage.createStorage(function (err, store) {
 	});
 
 	es.start(function (err, something) {
-		console.log("EventStore Started");
+		if (err) {
+			console.log(err);
+		} else {
+			console.log("EventStore Started");
+		}
 	});
 });
 
-domain.execute = function (command) {
+domain.getAggregate = function (aggregateType, aggregateId, callback) {
+
+	es.getEventStream(aggregateId, 0, function (err, stream) {
+		var aggregate = require('./aggregates/' + aggregateType)(stream);
+		aggregate.aggregateId = aggregateId;
+		console.log(aggregateType, aggregateId, "Has " + stream.events.length + " events");
+
+		stream.events.forEach(function (evt) {
+			aggregate[evt.payload.evt](evt.payload);
+		});
+
+		callback(null, aggregate);
+	});
+}
+
+domain.execute = function (command, callback) {
 	var urlParts = command.url.split('/');
 	var aggregateType = urlParts[1];
 	var method = urlParts[2];
 
-	console.log("Executing", aggregateType, method, command.aggregateId);
-
-	es.getEventStream(command.aggregateId, 0, function (err, stream) {
-		var aggregate = require('./aggregates/' + aggregateType)(stream);
-		stream.events.forEach(function (evt) {
-			console.log("Replaying event", evt.payload);
-			aggregate[evt.payload.evt](evt.payload);
+	domain.getAggregate(aggregateType, command.aggregateId, function (err, aggregate) {
+		aggregate[method](command, function (err, aggregate) {
+			callback(null, aggregate);
 		});
-
-		console.log("Retrieved aggregate", aggregate);
-
-		aggregate[method](command);
 	});
 };
 

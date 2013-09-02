@@ -6,7 +6,14 @@ var jobs = [];
 var handlers = {
 	NewJobCreated: function (evt) {
 		jobs.push({aggregateId: evt.aggregateId, description: evt.description});
-		console.log('Jobs=', jobs);
+	},
+	JobStarted: function (evt) {
+		console.log('JobStartedEvent', jobs);
+		jobs.forEach(function (job) {
+			if (job.aggregateId === evt.aggregateId) {
+				job.started = true;
+			};
+		});
 	}
 }
 
@@ -18,4 +25,5 @@ sock.on('message', function(message){
 	if (handlers[evt.evt]) {
 		handlers[evt.evt](evt);
 	}
+		console.log('Jobs=', jobs);
 });

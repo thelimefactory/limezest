@@ -9,34 +9,40 @@ publishSocket.bindSync('tcp://127.0.0.1:3001');
 
 var es = eventstore.createStore();
 var publisher = {
-    
-    publish: function(evt) {
-        var msg = JSON.stringify(evt, null, 4);
 
-        console.log(colors.green('\npublishing event on zero mq'));
-        console.log(msg);
+	publish: function(evt) {
+		var msg = JSON.stringify(evt, null, 4);
 
-        publishSocket.send(msg);
-    }
+		console.log(colors.green('\npublishing event on zero mq'));
+		console.log(msg);
+
+		publishSocket.send(msg);
+	}
 };
 
-eventstorage.createStorage(function (err, store) {
-	es.configure(function () {
-		es.use(store);
-		es.use(publisher);
-	});
+function onEventStoreStarted (err, something) {
+	if (!err) {
+		console.log("EventStore started");
+	} else {
+		console.log("Error starting EventStore", err);
+	}
+};
 
-	es.start(function (err, something) {
-		if (err) {
-			console.log(err);
-		} else {
-			console.log("EventStore Started");
-		}
-	});
-});
+function onStorageCreated (err, store) {
+	if (!err) {
+		es.configure(function () {
+			es.use(store);
+			es.start(onEventStoreStarted);
+		});
+	} else {
+		console.log("Error creating storage", err);
+	}
+};
+
+eventstorage.createStorage(onStorageCreated);
+
 
 domain.getAggregate = function (aggregateType, aggregateId, callback) {
-
 	es.getEventStream(aggregateId, 0, function (err, stream) {
 		var aggregate = require('./aggregates/' + aggregateType)(stream);
 		aggregate.aggregateId = aggregateId;

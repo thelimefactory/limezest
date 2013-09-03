@@ -22,13 +22,19 @@ job.JobStarted = function (evt) {
 };
 
 job.create = function (cmd, callback) {
-	eventStream.addEvent({
+	var newJobCreatedEvent = {
 		evt: "NewJobCreated", 
 		aggregateId: cmd.aggregateId,
 		description: cmd.description
-	});
-	eventStream.commit(function () {
-		callback();
+	};
+	eventStream.addEvent(newJobCreatedEvent);
+	eventStream.commit(function (err) {
+		if (!err) {
+			callback(err, newJobCreatedEvent);
+		} else {
+			console.log("Can't commit event", err);
+			callback(err, newJobCreatedEvent);
+		}
 	});
 };
 

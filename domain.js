@@ -1,13 +1,33 @@
 
 var domain = {};
 
-var eventstore = require('eventstore');
-var eventstorage = require('eventstore.mongoDb');
-var colors = require('./colors');
-var publishSocket = require('zmq').socket('push');
-publishSocket.bindSync('tcp://127.0.0.1:3001');
+var es = require('eventstore').createStore();
+var mongoStorage = require('eventstore.mongoDb');
 
-var es = eventstore.createStore();
+es.use(mongoStorage);
+
+var colors = require('./colors');
+// var publishSocket = require('zmq').socket('push');
+// publishSocket.bindSync('tcp://127.0.0.1:3001');
+
+domain.start = function (onDomainStarted) {
+	mongoStorage.createStorage({}, function (err, storage) {
+		if (err) {
+			console.log(colors.red('Error connecting to mongo store'));
+			onDomainStarted(err, null);
+		} else {
+			es.use(storage);
+			es.start(function (err) {
+				if (err) {
+					onDomainStarted(err, null);
+				} else {
+					onDomainStarted(null);
+				}
+			});
+		}
+	});
+};
+
 var publisher = {
 
 	publish: function(evt) {
@@ -22,7 +42,7 @@ var publisher = {
 
 function onEventStoreStarted (err, something) {
 	if (!err) {
-		console.log("EventStore started");
+		onDomainStarted();
 	} else {
 		console.log("Error starting EventStore", err);
 	}
@@ -39,31 +59,29 @@ function onStorageCreated (err, store) {
 	}
 };
 
-eventstorage.createStorage(onStorageCreated);
+domain.execute = function (command, callback) {
+	console.log("Executing", command);
+	var urlParts = command.url.split('/');
+	var aggregateType = urlParts[1];
+	var method = urlParts[2];
 
-
-domain.getAggregate = function (aggregateType, aggregateId, callback) {
-	es.getEventStream(aggregateId, 0, function (err, stream) {
-		var aggregate = require('./aggregates/' + aggregateType)(stream);
-		aggregate.aggregateId = aggregateId;
-		console.log(aggregateType, aggregateId, "Has " + stream.events.length + " events");
+	es.getEventStream(command.aggregateId, 0, function (err, stream) {
+		var aggregate = require('./aggregates/' + aggregateType);
+		aggregate.aggregateId = command.aggregateId;
+		console.log(aggregate, "Has " + stream.events.length + " events");
 
 		stream.events.forEach(function (evt) {
 			aggregate[evt.payload.evt](evt.payload);
 		});
 
-		callback(null, aggregate);
-	});
-}
+		aggregate[method](command, function (err, eventRaised) {
+			if (err) {
+				console.log(colors.red(err.message));
 
-domain.execute = function (command, callback) {
-	var urlParts = command.url.split('/');
-	var aggregateType = urlParts[1];
-	var method = urlParts[2];
-
-	domain.getAggregate(aggregateType, command.aggregateId, function (err, aggregate) {
-		aggregate[method](command, function (err, aggregate) {
-			callback(null, aggregate);
+			} else {
+				stream.addEvent(eventRaised);
+				stream.commit();
+			}
 		});
 	});
 };

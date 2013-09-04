@@ -28,5 +28,11 @@ app.post('/job/start', function (req, res) {
 	domain.execute(cmd);
 });
 
-app.listen(3000);
-console.log('Server listening on port 3000');	
+domain.start(function (err, store) {
+	if (err) {
+		return console.log(err);
+	} else {
+		app.listen(3000);
+		console.log('Server listening on port 3000');	
+	}
+});
